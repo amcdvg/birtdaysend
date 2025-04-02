@@ -10,7 +10,7 @@ import pywhatkit as pkt
 from infobip_channels.whatsapp.channel import WhatsAppChannel
 import time
 from bs4 import BeautifulSoup
-from mangum import Mangum
+
 
 app = FastAPI()
 
@@ -18,31 +18,36 @@ app = FastAPI()
 def buscar_archivo_en_drive(folder_url, target_file):
     folder_id = folder_url.split("/")[-1]
     url = f"https://drive.google.com/embeddedfolderview?id={folder_id}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
-    
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
-        return "Error al acceder a la carpeta."
+        return None, []
     
     soup = BeautifulSoup(response.text, "html.parser")
     found_files = []
     
-    # Buscar en todas las entradas de archivos
-    for entry in soup.select("div.flip-entry"):
-        # Extraer el nombre del archivo (está en un div con clase "flip-entry-title")
-        file_name_element = entry.select_one(".flip-entry-title")
-        if file_name_element:
-            file_name = file_name_element.text.strip()
-            # Extraer el ID del archivo (está en el atributo "id" del div principal, ejemplo: "entry-17JGhpkb2_0s4yNMyhEXZWbs5ekEQwhyZ")
-            file_id = entry.get("id").replace("entry-", "") if entry.get("id") else ""
+    # Find all file entries by their links
+    for a_tag in soup.select("a"):
+        href = a_tag.get("href", "")
+        if "/file/d/" in href:
+            # Extract file ID from the URL
+            file_id = href.split("/file/d/")[1].split("/")[0]
+            file_name = a_tag.text.strip()
             
-            if target_file.lower() in file_name.lower():  # Búsqueda insensible a mayúsculas
+            if target_file.lower() in file_name.lower():
                 found_files.append({
                     "name": file_name,
-                    "url": f"https://drive.google.com/file/d/{file_id}/view"
+                    "url": f"https://drive.google.com/uc?export=download&id={file_id}",
+                    "id": file_id
                 })
     
-    return file_id, found_files
+    # Return the first matching file (or None if none found)
+    if found_files:
+        return found_files[0]["id"], found_files
+    else:
+        return None, []
 
 class WhatsAppResponse(BaseModel):
     status: str
@@ -52,28 +57,23 @@ class WhatsAppResponse(BaseModel):
 
 def get_public_sheet_data(sheet_url: str):
     try:
-        session = requests.Session()
-        response = session.get(
+        response = requests.get(
             sheet_url,
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             },
-            allow_redirects=True
+            allow_redirects=True,
+            timeout=10,
         )
         response.raise_for_status()
         
-        # Decodificar el contenido
-        content = response.content.decode("utf-8-sig")
-        csv_data = StringIO(content)
+        # Usar response.content (bytes) y decodificar explícitamente con utf-8-sig
+        csv_data = response.content.decode("utf-8-sig")
+        return list(csv.DictReader(StringIO(csv_data)))
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching sheet: {str(e)}")
         
-        return list(csv.DictReader(csv_data))
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al leer Google Sheet: {str(e)}"
-        )
-        
-
+#content = response.content.decode("utf-8-sig")
 def send_whatsapp_image(image_url: str, name: str, phone) -> bool:
     print(name)
     print(phone)
@@ -127,7 +127,7 @@ def check_and_send():
     if not records:
         return {"status": "error", "message": "No hay datos en la hoja"}
     
-    any_sent = False  # Bandera para verificar si hubo envíos
+    any_sent = False
     
     for row in records:
         fecha_nacimiento = row.get("Fecha de nacimiento")
@@ -137,24 +137,27 @@ def check_and_send():
                 formatted_date = f"{parts[1]}-{parts[2]}"
                 print(formatted_date)
                 if formatted_date == today:
-                    image_url = row.get("Imagen")
                     name = row.get('Nombre')
                     phone = row.get("Telefono")
                     cc = row.get("CC")
+                    target_file = f"{cc}.png"  # Ejemplo: "1088312612.png"
+                    print(target_file)
+                    # Buscar el archivo en Drive
                     folder_url = "https://drive.google.com/drive/folders/1crBrwrLqyH67KFrWRGSldxDUuTvUs841"
-                    target_file = f"{cc}.png"  # Nombre exacto del archivo que aparece en el HTML
-
-                    id_file, resultados = buscar_archivo_en_drive(folder_url, target_file)
-                    url_image = f"https://drive.google.com/uc?export=download&id={id_file}"
-                    if image_url and name and phone:
+                    file_id, _ = buscar_archivo_en_drive(folder_url, target_file)
+                    
+                    if file_id:
+                        url_image = f"https://drive.google.com/uc?export=download&id={file_id}"
                         try:
                             send_whatsapp_image(url_image, name, phone)
-                            any_sent = True  # Marcamos que hubo al menos un envío
+                            any_sent = True
                             time.sleep(7)
                         except Exception as e:
                             print(f"Error al enviar a {name}: {str(e)}")
                     else:
-                        print(f"Faltan datos (imagen, nombre o teléfono) para {name}")
+                        print(f"No se encontró el archivo {target_file} para {name}")
+                else:
+                    print("Fecha no coincide")
             else:
                 print("Formato de fecha inválido")
         else:
@@ -172,9 +175,6 @@ def check_and_send():
             "message": "No hay cumpleaños hoy",
             "timestamp": datetime.now().isoformat()
         }
-    #except Exception as e:
-    #    return {"status": "error", "message": str(e)}
-
 
 @app.get("/health")
 def health_check():
@@ -183,5 +183,3 @@ def health_check():
         "timestamp": datetime.now().isoformat(),
         "service": "Public Sheet WhatsApp Sender"
     }
-    
-handler = Mangum(app)

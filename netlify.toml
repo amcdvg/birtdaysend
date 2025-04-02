@@ -1,6 +1,9 @@
 [build]
-  command = "pip install -r requirements.txt && mkdir -p netlify/functions"
-  publish = "netlify/functions"
+  command = "echo 'No build needed for Docker'"
+  publish = "/"
+  functions = "."
 
-[functions]
-  directory = "netlify/functions"
+[[redirects]]
+  from = "/*"
+  to = "/"
+  status = 200
