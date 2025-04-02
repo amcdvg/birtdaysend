@@ -1,11 +1,7 @@
 [build]
-  # Indica que usaremos Docker
   image = "python:3.9-slim"
   command = "docker build . -t my-fastapi-app"
-
-  # Directorio donde se publicará la aplicación
   publish = "."
 
-  # Variables de entorno (opcional)
   [build.environment]
     PORT = 80
