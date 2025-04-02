@@ -1,7 +1,6 @@
 [build]
-  image = "python:3.9-slim"
-  command = "docker build . -t my-fastapi-app"
-  publish = "."
+  command = "pip install -r requirements.txt && mkdir -p netlify/functions"
+  publish = "netlify/functions"
 
-  [build.environment]
-    PORT = 80
+[functions]
+  directory = "netlify/functions"

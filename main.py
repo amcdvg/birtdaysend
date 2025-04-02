@@ -10,7 +10,7 @@ import pywhatkit as pkt
 from infobip_channels.whatsapp.channel import WhatsAppChannel
 import time
 from bs4 import BeautifulSoup
-
+from mangum import Mangum
 
 app = FastAPI()
 
@@ -183,3 +183,5 @@ def health_check():
         "timestamp": datetime.now().isoformat(),
         "service": "Public Sheet WhatsApp Sender"
     }
+    
+handler = Mangum(app)
