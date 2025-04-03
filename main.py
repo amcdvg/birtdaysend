@@ -5,9 +5,6 @@ import csv
 from io import StringIO
 from pydantic import BaseModel
 from typing import Optional
-import os
-import pywhatkit as pkt
-from infobip_channels.whatsapp.channel import WhatsAppChannel
 import time
 from bs4 import BeautifulSoup
 
