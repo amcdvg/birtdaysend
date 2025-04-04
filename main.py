@@ -76,7 +76,7 @@ def send_whatsapp_image(image_url: str, name: str, phone) -> bool:
     print(phone)
     params = {
         "recipient": f"57{phone}",  # Sin el "+"
-        "apikey": "oUAms4QCxndG",
+        "apikey": "D3WcdrLtkwUo",#"oUAms4QCxndG",
         "text": f'''🎉 ¡Feliz Cumpleaños! 🎉
 Estimado(a) {name},
 
