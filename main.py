@@ -77,18 +77,7 @@ def send_whatsapp_image(image_url: str, name: str, phone) -> bool:
     params = {
         "recipient": f"57{phone}",  # Sin el "+"
         "apikey": "D3WcdrLtkwUo",#"oUAms4QCxndG",
-        "text": f'''🎉 ¡Feliz Cumpleaños! 🎉
-Estimado(a) {name},
-
-Hoy, desde el Partido MIRA , queremos honrar su liderazgo y visión con un mensaje lleno de admiración. Su ejemplo de vida, guiado por principios de justicia, libertad y respeto a la vida, ha sido un faro de inspiración para todos quienes aspiramos a un Colombia mejor.
-
-Que este día esté impregnado de la paz, esperanza y alegría que usted ha sembrado en quienes le siguen. Su trayectoria, marcada por un compromiso inquebrantable con la democracia y el bien común, demuestra que el verdadero liderazgo transforma realidades.
-
-¡Que Dios le conceda salud, fuerzas y sabiduría para seguir iluminando el camino hacia un futuro de oportunidades! 🙏
-
-Con profundo respeto y gratitud,
-Partido MIRA 🇨🇴❤️
-Por un país con valores, libertad y progreso.''',
+        "text": "",
         "file": image_url
         
     }
